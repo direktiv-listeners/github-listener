@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-source-plain
+  labels:
+    app: github-source-plain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: github-source-plain
+  template:
+    metadata:
+      annotations:
+        linkerd.io/inject: disabled
+      labels:
+        app: github-source-plain
+    spec:
+      containers:
+        - name: github-source-plain
+          image: direktiv/github-listener
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+          env:
+          - name: DIREKTIV_GITHUB_ENDPOINT
+            value: http://direktiv-eventing.default/direktiv
+---
+apiVersion: v1 
+kind: Service
+metadata:
+  name: github-listener-service-plain
+spec:
+  selector:
+    app: github-source-plain
+  ports:
+  - port: 8080
+    targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: github-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /github
+        pathType: Prefix
+        backend:
+          service:
+            name: github-listener-service-plain
+            port:
+              number: 8080
